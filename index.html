@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Trade With Prank — Tap Demo</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1020; --panel:#151d33; --gold:#ffd166; --green:#35d07f; --muted:#aab4ce; }
+    * { box-sizing: border-box; }
+    body { margin:0; min-height:100vh; font-family:system-ui,-apple-system,Segoe UI,sans-serif; color:#f7f8ff; background:radial-gradient(circle at top,#24345c 0,#0b1020 55%); }
+    main { max-width:480px; margin:0 auto; padding:24px 18px 36px; text-align:center; }
+    .brand { font-size:13px; letter-spacing:2px; color:var(--gold); font-weight:800; }
+    h1 { margin:8px 0 4px; font-size:28px; }
+    .subtitle { color:var(--muted); font-size:14px; margin-bottom:22px; }
+    .panel { background:rgba(21,29,51,.94); border:1px solid #2b3858; border-radius:22px; padding:20px; margin:14px 0; box-shadow:0 12px 35px #0004; }
+    .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:1.4px; }
+    #balance { color:var(--gold); font-size:38px; font-weight:900; margin:8px 0 16px; overflow-wrap:anywhere; }
+    #tap { width:180px; height:180px; border-radius:50%; border:5px solid #ffe7a1; background:linear-gradient(145deg,#ffe9a8,#ffad32); color:#492b00; font-size:27px; font-weight:1000; cursor:pointer; box-shadow:0 9px 0 #a65c12,0 15px 30px #ffb52e33; transition:transform .08s; touch-action:manipulation; }
+    #tap:active { transform:translateY(6px); box-shadow:0 3px 0 #a65c12; }
+    .energy-row { display:flex; justify-content:space-between; color:var(--muted); font-size:13px; margin-bottom:8px; }
+    .bar { height:10px; border-radius:99px; background:#303b58; overflow:hidden; }
+    #energybar { height:100%; width:100%; background:linear-gradient(90deg,#35d07f,#b8f36b); transition:width .2s; }
+    .actions { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    button.secondary { border:1px solid #3a496c; background:#202b47; color:white; border-radius:14px; padding:13px 8px; font-weight:700; cursor:pointer; }
+    button.secondary:disabled { opacity:.45; cursor:not-allowed; }
+    #message { min-height:22px; color:var(--green); font-size:13px; margin-top:12px; }
+    .note { font-size:11px; line-height:1.5; color:#8e9ab7; margin-top:20px; }
+  </style>
+</head>
+<body>
+<main>
+  <div class="brand">TRADE WITH PRANK</div>
+  <h1>🪙 TWP Tap Demo</h1>
+  <div class="subtitle">Tap to collect demo points</div>
+  <section class="panel">
+    <div class="label">Your demo balance</div>
+    <div id="balance">0 TWP</div>
+    <button id="tap" aria-label="Tap to earn">TAP<br>🪙</button>
+    <div style="height:24px"></div>
+    <div class="energy-row"><span>⚡ Energy</span><span id="energytext">1000 / 1000</span></div>
+    <div class="bar"><div id="energybar"></div></div>
+    <div id="message" role="status"></div>
+  </section>
+  <section class="panel">
+    <div class="actions">
+      <button class="secondary" id="daily">🎁 Daily reward</button>
+      <button class="secondary" id="invite">👥 Invite friends</button>
+    </div>
+  </section>
+  <div class="note">Demo only: TWP points are not cryptocurrency, have no cash value, and cannot be withdrawn. This starter stores progress in this browser only. Do not collect passwords, wallet seed phrases, or private keys.</div>
+</main>
+<script>
+(() => {
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if (tg) { tg.ready(); tg.expand(); }
+  const key = 'twp-tap-demo-v1';
+  const today = () => new Date().toISOString().slice(0,10);
+  let state;
+  try { state = JSON.parse(localStorage.getItem(key) || 'null'); } catch (_) {}
+  if (!state) state = { balance: 0, energy: 1000, lastDaily: '', lastEnergy: Date.now() };
+  const save = () => localStorage.setItem(key, JSON.stringify(state));
+  const el = id => document.getElementById(id);
+  const render = () => {
+    el('balance').textContent = Math.floor(state.balance).toLocaleString() + ' TWP';
+    el('energytext').textContent = state.energy + ' / 1000';
+    el('energybar').style.width = (state.energy / 1000 * 100) + '%';
+    el('daily').disabled = state.lastDaily === today();
+  };
+  const say = msg => { el('message').textContent = msg; };
+  el('tap').addEventListener('click', () => {
+    if (state.energy < 1) { say('No energy left. Try again later.'); return; }
+    state.balance += 1; state.energy -= 1; save(); render(); say('+1 demo point!');
+  });
+  el('daily').addEventListener('click', () => {
+    if (state.lastDaily === today()) { say('Daily reward already collected today.'); return; }
+    state.balance += 100; state.lastDaily = today(); save(); render(); say('+100 demo points collected!');
+  });
+  el('invite').addEventListener('click', async () => {
+    const url = tg && tg.initDataUnsafe && tg.initDataUnsafe.user
+      ? 'https://t.me/' + (location.pathname.split('/').pop() || '') : location.href;
+    try {
+      if (tg && tg.openTelegramLink) tg.openTelegramLink('https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + encodeURIComponent('Join my Trade With Prank demo!'));
+      else if (navigator.share) await navigator.share({title:'Trade With Prank', text:'Try this tap demo', url:location.href});
+      else { await navigator.clipboard.writeText(location.href); say('Demo link copied. Share it with friends.'); }
+    } catch (_) { say('Share this page link with friends.'); }
+  });
+  // Regenerate one energy every 10 seconds while this page is open.
+  setInterval(() => {
+    if (state.energy < 1000) { state.energy = Math.min(1000, state.energy + 1); save(); render(); }
+  }, 10000);
+  render();
+})();
+</script>
+</body>
+</html>
